@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2046
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarDust.PlaylistControler", "StarDust.PlaylistControler\StarDust.PlaylistControler.csproj", "{EF04D099-039A-4994-8282-88DC0F51078B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StarDust.PlaylistControler", "StarDust.PlaylistControler\StarDust.PlaylistControler.csproj", "{EF04D099-039A-4994-8282-88DC0F51078B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarDust.PlaylistControler.Test", "..\StarDust.PlaylistControler.Test\StarDust.PlaylistControler.Test.csproj", "{1DF83F53-C390-4F59-B235-BCAAF919AE15}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StarDust.PlaylistControler.Test", "..\StarDust.PlaylistControler.Test\StarDust.PlaylistControler.Test.csproj", "{1DF83F53-C390-4F59-B235-BCAAF919AE15}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole", "TestConsole\TestConsole.csproj", "{9D96CCAB-3E5A-4BA6-ADCF-7A0D73E744C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{1DF83F53-C390-4F59-B235-BCAAF919AE15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DF83F53-C390-4F59-B235-BCAAF919AE15}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DF83F53-C390-4F59-B235-BCAAF919AE15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D96CCAB-3E5A-4BA6-ADCF-7A0D73E744C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D96CCAB-3E5A-4BA6-ADCF-7A0D73E744C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D96CCAB-3E5A-4BA6-ADCF-7A0D73E744C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D96CCAB-3E5A-4BA6-ADCF-7A0D73E744C5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
