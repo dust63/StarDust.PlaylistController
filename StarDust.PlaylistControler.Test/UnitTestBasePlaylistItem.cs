@@ -76,6 +76,8 @@ namespace StarDust.PlaylistControler.Test
 
             Assert.StrictEqual(element2.ChildElement, element3);
             Assert.StrictEqual(element3.ParentElement, element2);
+
+            Assert.Null(element3.ChildElement);
         }
     }
 }
