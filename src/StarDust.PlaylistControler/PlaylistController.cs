@@ -14,10 +14,13 @@ namespace StarDust.PlaylistControler
 
         public T CurrentPlayingItem { get; protected set; }
         public T PreparedItem { get; protected set; }
+
         public Action<object> ActionOnEndTimeNear { get; set; }
         public Action<object> ActionOnEndTimeReached { get; set; }
         public Action<object> ActionOnStartTimeNear { get; set; }
         public Action<object> ActionOnStartTimeReached { get; set; }
+
+
         public event EventHandler<ElementsSkippedEventArgs<T>> ElementsSkipped;
         public event EventHandler PlaylistStopped;
 

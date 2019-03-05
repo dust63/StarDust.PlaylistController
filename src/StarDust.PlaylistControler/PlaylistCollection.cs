@@ -11,6 +11,10 @@ namespace StarDust.PlaylistControler
         public event EventHandler PlaylistCleared;
 
 
+
+        public PlaylistCollection()
+        {
+        }
         public PlaylistCollection(IEnumerable<T> enumerable) : base(enumerable)
         {
 
