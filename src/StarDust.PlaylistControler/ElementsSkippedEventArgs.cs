@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace StarDust.PlaylistControler
 {
-    public class ElementsSkippedEventArgs : EventArgs
+    public class ElementsSkippedEventArgs<T> : EventArgs where T : ISchedule
     {
 
-        public List<BasePlaylistItem> SkippedElements { get; }
+        public T[] SkippedElements { get; }
 
-        public ElementsSkippedEventArgs(IEnumerable<BasePlaylistItem> skippedElements)
+        public ElementsSkippedEventArgs(IEnumerable<T> skippedElements)
         {
-            SkippedElements = new List<BasePlaylistItem>(skippedElements);
+            SkippedElements = skippedElements.ToArray();
         }
     }
 }

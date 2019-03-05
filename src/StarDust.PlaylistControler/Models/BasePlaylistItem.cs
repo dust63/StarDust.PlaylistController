@@ -22,11 +22,9 @@ public abstract class BasePlaylistItem : ISchedule
     public event EventHandler EndTimeReached;
     public event EventHandler StartTimeNear;
     public event EventHandler StartTimeReached;
+    public event EventHandler<StartModeChangedEventArgs> StartModeChanged;
 
-    public Action<object> ActionOnEndTimeNear { get; set; }
-    public Action<object> ActionOnEndTimeReached { get; set; }
-    public Action<object> ActionOnStartTimeNear { get; set; }
-    public Action<object> ActionOnStartTimeReached { get; set; }
+
     public Status Status { get; set; }
 
 
@@ -37,10 +35,7 @@ public abstract class BasePlaylistItem : ISchedule
     public DateTime? StartTime
     {
         get => _startTime;
-        set => SetProperty(ref _startTime, value, (v) =>
-        {
-            SetCheckingTask();
-        });
+        set => SetProperty(ref _startTime, value);
     }
 
 
@@ -50,10 +45,7 @@ public abstract class BasePlaylistItem : ISchedule
     public TimeSpan Duration
     {
         get => _duration;
-        set => SetProperty(ref _duration, value, (v) =>
-        {
-            SetCheckingTask();
-        });
+        set => SetProperty(ref _duration, value);
     }
 
 
@@ -66,7 +58,11 @@ public abstract class BasePlaylistItem : ISchedule
     public StartMode StartMode
     {
         get => _startMode;
-        set => SetProperty(ref _startMode, value, (v) => SetCheckingTask());
+        set => SetProperty(ref _startMode, value,
+            (oldValue) =>
+            {
+                StartModeChanged?.Invoke(this, new StartModeChangedEventArgs(oldValue, _startMode));
+            });
     }
 
 
@@ -120,39 +116,40 @@ public abstract class BasePlaylistItem : ISchedule
         var oldValue = storage;
         storage = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         actionOnChanged?.Invoke(oldValue);
 
         return true;
     }
 
-
-
-
+    #endregion
 
     public void CancelCheckingTask()
     {
-        tokenSource?.Cancel();
+        if (tokenSource == null)
+            return;
+
+        tokenSource.Cancel();
         Status = Status.Aborted;
     }
 
-    public void SetCheckingTask(bool canChecking = false)
+    public void StartCheckingTask()
     {
-        if (!canChecking && StartMode == StartMode.AutoFollow)
+        if (Status == Status.Skipped)
             return;
 
         tokenSource?.Cancel();
         tokenSource = new CancellationTokenSource();
 
-        if (!StartTime.HasValue || Duration <= TimeSpan.Zero || StartMode == StartMode.None)
+        if (!StartTime.HasValue ||
+            Duration <= TimeSpan.Zero ||
+            StartMode == StartMode.None)
             return;
-
 
 
         Task.Factory.StartNew(async () =>
       {
-          if (StartMode == StartMode.AutoFollow)
-              await CheckNearFromStartTime(tokenSource.Token);
+
+          await CheckNearFromStartTime(tokenSource.Token);
           await CheckStartTimeReached(tokenSource.Token);
           await CheckEndTimeNear(tokenSource.Token);
           await CheckEndTimeReached(tokenSource.Token);
@@ -171,9 +168,8 @@ public abstract class BasePlaylistItem : ISchedule
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
-
+            Status = Status.Prepared;
             StartTimeNear?.Invoke(this, EventArgs.Empty);
-            ActionOnStartTimeNear?.Invoke(this);
         }, cancellationToken);
 
     }
@@ -188,12 +184,10 @@ public abstract class BasePlaylistItem : ISchedule
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
-
+            Status = Status.Playing;
             StartTimeReached?.Invoke(this, EventArgs.Empty);
-            ActionOnStartTimeReached?.Invoke(this);
         }, cancellationToken);
     }
-
 
     protected async Task CheckEndTimeReached(CancellationToken cancellationToken)
     {
@@ -207,11 +201,10 @@ public abstract class BasePlaylistItem : ISchedule
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
+            Status = Status.Played;
             EndTimeReached?.Invoke(this, EventArgs.Empty);
-            ActionOnEndTimeReached?.Invoke(this);
         }, cancellationToken);
     }
-
 
     protected async Task CheckEndTimeNear(CancellationToken cancellationToken)
     {
@@ -227,14 +220,26 @@ public abstract class BasePlaylistItem : ISchedule
             }
 
             EndTimeNear?.Invoke(this, EventArgs.Empty);
-            ActionOnEndTimeNear?.Invoke(this);
         }, cancellationToken);
     }
 
 
-    #endregion
 
 
 
 
+
+}
+
+public class StartModeChangedEventArgs : EventArgs
+{
+
+    public StartMode OldStartMode { get; }
+    public StartMode CurrentStartMode { get; }
+
+    public StartModeChangedEventArgs(StartMode oldStartMode, StartMode currentStartMode)
+    {
+        OldStartMode = oldStartMode;
+        CurrentStartMode = currentStartMode;
+    }
 }

@@ -12,11 +12,8 @@ public interface ISchedule : INotifyPropertyChanged
     event EventHandler EndTimeReached;
     event EventHandler StartTimeNear;
     event EventHandler StartTimeReached;
+    event EventHandler<StartModeChangedEventArgs> StartModeChanged;
 
-    Action<object> ActionOnEndTimeNear { get; set; }
-    Action<object> ActionOnEndTimeReached { get; set; }
-    Action<object> ActionOnStartTimeNear { get; set; }
-    Action<object> ActionOnStartTimeReached { get; set; }
 
 
 
@@ -26,7 +23,11 @@ public interface ISchedule : INotifyPropertyChanged
     TimeSpan PrerollEnd { get; }
     DateTime? StartTime { get; set; }
     TimeSpan Duration { get; set; }
+    DateTime? EndTime { get; }
     StartMode StartMode { get; set; }
+
+    void StartCheckingTask();
+    void CancelCheckingTask();
 
 }
 
