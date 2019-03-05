@@ -153,6 +153,7 @@ public abstract class BasePlaylistItem : ISchedule
           await CheckStartTimeReached(tokenSource.Token);
           await CheckEndTimeNear(tokenSource.Token);
           await CheckEndTimeReached(tokenSource.Token);
+          tokenSource = null;
       }, tokenSource.Token);
 
 

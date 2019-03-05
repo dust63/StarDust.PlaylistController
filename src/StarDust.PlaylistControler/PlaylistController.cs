@@ -37,7 +37,7 @@ namespace StarDust.PlaylistControler
             _playlistToManage.ElementAdded += OnElementAdded;
             _playlistToManage.ElementRemoved += OnElementRemoved;
             _playlistToManage.PlaylistCleared += OnPlaylistCleared;
-
+            _playlistToManage.ElementsRemoved += OnElementsRemoved;
 
             Parallel.ForEach(_playlistToManage, AddEvent);
 
@@ -50,6 +50,14 @@ namespace StarDust.PlaylistControler
 
         }
 
+        private void OnElementsRemoved(object sender, CollectionChangeEventArgs e)
+        {
+            Parallel.ForEach((IEnumerable<T>)e.Element, (element) =>
+             {
+                 RemoveEvent(element);
+                 element.CancelCheckingTask();
+             });
+        }
 
 
         private void OnPlaylistCleared(object sender, EventArgs e)
@@ -57,12 +65,11 @@ namespace StarDust.PlaylistControler
             CurrentPlayingItem?.CancelCheckingTask();
             PreparedItem?.CancelCheckingTask();
 
-            Parallel.ForEach(_playlistToManage, RemoveEvent);
-            foreach (var element in _playlistToManage.Where(x => x.StartMode == StartMode.Schedule && x.StartTime >= DateTime.Now))
-            {
-                element.CancelCheckingTask();
-            }
-
+            Parallel.ForEach(_playlistToManage.ToArray(), (x) =>
+             {
+                 RemoveEvent(x);
+                 x.CancelCheckingTask();
+             });
         }
 
         private void OnElementRemoved(object sender, CollectionChangeEventArgs e)

@@ -3,7 +3,7 @@
     class TestPlaylistElement : BasePlaylistItem
     {
 
-        public string ID { get; set; }
+        public int ID { get; set; }
 
         public override string ToString()
         {

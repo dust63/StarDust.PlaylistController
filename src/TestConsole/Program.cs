@@ -13,16 +13,19 @@ namespace TestConsole
         static void Main(string[] args)
         {
 
-            var playlist = new PlaylistCollection<TestPlaylistElement>(Enumerable.Range(1, 10000).Select(x => new TestPlaylistElement
+            var playlist = new PlaylistCollection<TestPlaylistElement>(Enumerable.Range(1, 100000).Select(x => new TestPlaylistElement
             {
-                ID = x.ToString(),
+                ID = x,
                 Duration = TimeSpan.FromSeconds(15),
 
             }));
 
+
+
             playlist.First().StartTime = DateTime.Now;
             playlist.First().StartMode = StartMode.Schedule;
 
+            playlist.RemoveWhere(x => x.ID > 8000);
 
             playlist.ElementAt(1000).StartMode = StartMode.Schedule;
             playlist.ElementAt(1000).StartTime = DateTime.Now.AddSeconds(10);
