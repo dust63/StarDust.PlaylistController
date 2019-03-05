@@ -6,10 +6,6 @@ namespace StarDust.PlaylistControler
 {
     public class PlaylistCollection<T> : HashSet<T> where T : ISchedule
     {
-
-        private readonly HashSet<T> innerList = new HashSet<T>();
-
-
         public event EventHandler<CollectionChangeEventArgs> ElementAdded;
         public event EventHandler<CollectionChangeEventArgs> ElementRemoved;
         public event EventHandler PlaylistCleared;
