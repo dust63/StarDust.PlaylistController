@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StarDust.PlaylistControler.Models;
+using System;
 using System.ComponentModel;
 
 
@@ -19,16 +20,14 @@ public interface ISchedule : INotifyPropertyChanged
 
 
 
-    TimeSpan Preroll { get; }
+
+    Status Status { get; set; }
+    TimeSpan PrerollStart { get; }
+    TimeSpan PrerollEnd { get; }
     DateTime? StartTime { get; set; }
     TimeSpan Duration { get; set; }
     StartMode StartMode { get; set; }
 
-
-    ISchedule ParentElement { get; set; }
-    ISchedule ChildElement { get; set; }
-
-    void SetCurrentStartTime();
 }
 
 

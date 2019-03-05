@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StarDust.PlaylistControler.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -9,15 +10,14 @@ using System.Threading.Tasks;
 public abstract class BasePlaylistItem : ISchedule
 {
 
-
-    private ISchedule _childElement;
-    private ISchedule _parentElement;
     private DateTime? _startTime;
     private TimeSpan _duration = TimeSpan.Zero;
     private StartMode _startMode = StartMode.AutoFollow;
+
+    private CancellationTokenSource tokenSource;
+
+
     public event PropertyChangedEventHandler PropertyChanged;
-
-
     public event EventHandler EndTimeNear;
     public event EventHandler EndTimeReached;
     public event EventHandler StartTimeNear;
@@ -27,9 +27,11 @@ public abstract class BasePlaylistItem : ISchedule
     public Action<object> ActionOnEndTimeReached { get; set; }
     public Action<object> ActionOnStartTimeNear { get; set; }
     public Action<object> ActionOnStartTimeReached { get; set; }
+    public Status Status { get; set; }
 
 
-    public TimeSpan Preroll => TimeSpan.FromSeconds(2);
+    public TimeSpan PrerollStart => TimeSpan.FromSeconds(2);
+    public TimeSpan PrerollEnd => PrerollStart.Add(TimeSpan.FromSeconds(0.2));
 
 
     public DateTime? StartTime
@@ -37,7 +39,6 @@ public abstract class BasePlaylistItem : ISchedule
         get => _startTime;
         set => SetProperty(ref _startTime, value, (v) =>
         {
-            SetChildStartTime();
             SetCheckingTask();
         });
     }
@@ -51,7 +52,6 @@ public abstract class BasePlaylistItem : ISchedule
         get => _duration;
         set => SetProperty(ref _duration, value, (v) =>
         {
-            SetChildStartTime();
             SetCheckingTask();
         });
     }
@@ -66,77 +66,13 @@ public abstract class BasePlaylistItem : ISchedule
     public StartMode StartMode
     {
         get => _startMode;
-        set => SetProperty(ref _startMode, value, (v) => SetCurrentStartTime());
-    }
-
-    /// <summary>
-    /// The parent element
-    /// </summary>
-    public ISchedule ParentElement
-    {
-        get => _parentElement;
-        set
-        {
-            SetProperty(ref _parentElement, value, (oldValue) =>
-            {
-                if (_parentElement != null)
-                {
-                    _parentElement.ChildElement = this;
-                }
-
-                if (oldValue != null && _parentElement == null)
-                    oldValue.ChildElement = null;
-            });
-
-        }
-    }
-
-    /// <summary>
-    /// The child element
-    /// </summary>
-    public ISchedule ChildElement
-    {
-        get => _childElement;
-        set
-        {
-            SetProperty(ref _childElement, value, (oldValue) =>
-            {
-                if (_childElement != null)
-                {
-                    _childElement.ParentElement = this;
-                    SetChildStartTime();
-                }
-
-                if (oldValue != null && _childElement == null)
-                    oldValue.ParentElement = null;
-
-
-            });
-        }
+        set => SetProperty(ref _startMode, value, (v) => SetCheckingTask());
     }
 
 
-    protected virtual void SetChildStartTime()
-    {
-        _childElement?.SetCurrentStartTime();
-    }
 
-    public void SetCurrentStartTime()
-    {
-        switch (StartMode)
-        {
-            case StartMode.AutoFollow:
-                StartTime = ParentElement?.StartTime?.Add(ParentElement.Duration);
-                break;
-            case StartMode.None:
-                StartTime = null;
-                break;
-            case StartMode.Schedule:
-                break;
-            default:
-                throw new NotImplementedException();
-        }
-    }
+
+
 
 
 
@@ -192,32 +128,36 @@ public abstract class BasePlaylistItem : ISchedule
 
 
 
-    private CancellationTokenSource tokenSource;
-    private Task taskChecking;
 
-    protected void SetCheckingTask()
+
+    public void CancelCheckingTask()
     {
+        tokenSource?.Cancel();
+        Status = Status.Aborted;
+    }
 
-        if (tokenSource != null)
-        {
-            tokenSource.Cancel();
-        }
+    public void SetCheckingTask(bool canChecking = false)
+    {
+        if (!canChecking && StartMode == StartMode.AutoFollow)
+            return;
 
+        tokenSource?.Cancel();
         tokenSource = new CancellationTokenSource();
 
-
-        if (!StartTime.HasValue || Duration <= TimeSpan.Zero)
+        if (!StartTime.HasValue || Duration <= TimeSpan.Zero || StartMode == StartMode.None)
             return;
 
 
 
-        taskChecking = Task.Factory.StartNew(async () =>
-       {
-           await CheckNearFromStartTime(tokenSource.Token);
-           await CheckStartTimeReached(tokenSource.Token);
-           await CheckEndTimeNear(tokenSource.Token);
-           await CheckEndTimeReached(tokenSource.Token);
-       }, tokenSource.Token);
+        Task.Factory.StartNew(async () =>
+      {
+          if (StartMode == StartMode.AutoFollow)
+              await CheckNearFromStartTime(tokenSource.Token);
+          await CheckStartTimeReached(tokenSource.Token);
+          await CheckEndTimeNear(tokenSource.Token);
+          await CheckEndTimeReached(tokenSource.Token);
+      }, tokenSource.Token);
+
 
     }
 
@@ -226,7 +166,7 @@ public abstract class BasePlaylistItem : ISchedule
         await Task.Factory.StartNew(() =>
         {
 
-            while (StartTime?.Subtract(Preroll) >= DateTime.Now)
+            while (StartTime?.Subtract(PrerollStart) >= DateTime.Now)
             {
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
@@ -280,7 +220,7 @@ public abstract class BasePlaylistItem : ISchedule
         await Task.Factory.StartNew(() =>
         {
 
-            while (EndTime?.Subtract(Preroll) >= DateTime.Now)
+            while (EndTime?.Subtract(PrerollEnd) >= DateTime.Now)
             {
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
