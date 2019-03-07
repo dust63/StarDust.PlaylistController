@@ -76,6 +76,13 @@ namespace StarDust.PlaylistControler
             OnElementRemove(elementRemove);
         }
 
+        public new void RemoveRange(int index, int count)
+        {
+            var elementsRemoved = GetRange(index, count);
+            base.RemoveRange(index, count);
+            OnElementsRemoved(elementsRemoved);
+        }
+
         public new void RemoveAll(Predicate<T> match)
         {
             var elementsRemoved = this.Where(match.Invoke);

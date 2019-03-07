@@ -12,7 +12,7 @@ namespace StarDust.PlaylistControler
     {
         private readonly PlaylistCollection<T> _playlistToManage;
         private bool _initialized = false;
-        private readonly TimeSpan _prerollValue = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan _prerollValue = TimeSpan.FromSeconds(2);
 
         public T CurrentPlayingItem { get; protected set; }
         public T PreparedItem { get; protected set; }
@@ -23,19 +23,7 @@ namespace StarDust.PlaylistControler
         public event EventHandler StartTimeReached;
 
 
-        public PlaylistController()
-        {
 
-        }
-
-        /// <summary>
-        /// Initialize playlit controler with preroll value
-        /// </summary>
-        /// <param name="prerollValue">Time before start and end of schedule element</param>
-        public PlaylistController(TimeSpan prerollValue)
-        {
-            _prerollValue = prerollValue;
-        }
 
         public TimeSpan PrerollStart => _prerollValue;
         public TimeSpan PrerollEnd => _prerollValue;
@@ -44,11 +32,20 @@ namespace StarDust.PlaylistControler
         public event EventHandler PlaylistStarted;
         public event EventHandler PlaylistStopped;
 
-
+        public PlaylistCollection<T> PlaylistManaged => _playlistToManage;
 
         public PlaylistController(PlaylistCollection<T> playlistToManage)
         {
             _playlistToManage = playlistToManage;
+        }
+
+        public PlaylistController(PlaylistCollection<T> playlistToManage, TimeSpan prerollValue) : this(playlistToManage)
+        {
+            if (prerollValue > TimeSpan.Zero)
+                _prerollValue = prerollValue;
+            else
+                throw new ArgumentException("Preroll must be positive and not zero");
+
         }
 
         public void Initialize()
