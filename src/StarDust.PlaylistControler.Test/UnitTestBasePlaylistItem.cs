@@ -21,7 +21,7 @@ namespace StarDust.PlaylistControler.Test
                 StartTime = expectedStartTime,
                 Duration = TimeSpan.FromSeconds(5),
                 StartMode = StartMode.AutoFollow,
-                Status = Status.Playing
+                Status = Status.Started
             };
 
 
@@ -30,7 +30,7 @@ namespace StarDust.PlaylistControler.Test
             Assert.True(element.Duration == TimeSpan.FromSeconds(5));
             Assert.True(element.EndTime == expectedStartTime.Add(TimeSpan.FromSeconds(5)));
             Assert.True(element.StartMode == StartMode.AutoFollow);
-            Assert.True(element.Status == Status.Playing);
+            Assert.True(element.Status == Status.Started);
             return element;
         }
 
@@ -49,7 +49,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(3000, false))
             {
                 Assert.True(true);
@@ -79,7 +79,7 @@ namespace StarDust.PlaylistControler.Test
                 waitHandle.Set();
             };
 
-            element.StartCheckingTask();
+            element.StartScheduling();
 
             if (!waitHandle.WaitOne(toWait, false))
             {
@@ -104,7 +104,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(DateTime.Now <= element.StartTime);
@@ -132,7 +132,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(false, "Event not fired");
@@ -156,7 +156,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(DateTime.Now <= element.StartTime?.Subtract(element.PrerollStart));
@@ -180,7 +180,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(false, "Event not fired");
@@ -203,7 +203,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(DateTime.Now <= element.EndTime?.Subtract(element.PrerollStart));
@@ -228,7 +228,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(false, "Event not fired");
@@ -252,7 +252,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(toWait, false))
             {
                 Assert.True(DateTime.Now <= element.EndTime);
@@ -286,7 +286,7 @@ namespace StarDust.PlaylistControler.Test
                 waitHandle.Set();
             };
 
-            element.StartCheckingTask();
+            element.StartScheduling();
 
             if (!waitHandle.WaitOne(1100, false))
             {
@@ -314,7 +314,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(4100, false))
             {
                 Assert.True(DateTime.Now <= element.StartTime);
@@ -344,7 +344,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(3100, false))
             {
                 Assert.True(false, "Event not fired");
@@ -371,7 +371,7 @@ namespace StarDust.PlaylistControler.Test
             {
                 waitHandle.Set();
             };
-            element.StartCheckingTask();
+            element.StartScheduling();
             if (!waitHandle.WaitOne(2500, false))
             {
                 Assert.True(DateTime.Now <= element.StartTime?.Subtract(element.PrerollStart));

@@ -7,22 +7,44 @@ using System.Threading.Tasks;
 
 namespace StarDust.PlaylistControler
 {
-    public class PlaylistController<T> where T : class, ISchedule
+
+    public class PlaylistController<T> : IScheduleNotifications where T : class, IPlaylistItem
     {
         private readonly PlaylistCollection<T> _playlistToManage;
         private bool _initialized = false;
+        private readonly TimeSpan _prerollValue = TimeSpan.FromSeconds(1);
 
         public T CurrentPlayingItem { get; protected set; }
         public T PreparedItem { get; protected set; }
 
-        public Action<object> ActionOnEndTimeNear { get; set; }
-        public Action<object> ActionOnEndTimeReached { get; set; }
-        public Action<object> ActionOnStartTimeNear { get; set; }
-        public Action<object> ActionOnStartTimeReached { get; set; }
+        public event EventHandler EndTimeNear;
+        public event EventHandler EndTimeReached;
+        public event EventHandler StartTimeNear;
+        public event EventHandler StartTimeReached;
 
+
+        public PlaylistController()
+        {
+
+        }
+
+        /// <summary>
+        /// Initialize playlit controler with preroll value
+        /// </summary>
+        /// <param name="prerollValue">Time before start and end of schedule element</param>
+        public PlaylistController(TimeSpan prerollValue)
+        {
+            _prerollValue = prerollValue;
+        }
+
+        public TimeSpan PrerollStart => _prerollValue;
+        public TimeSpan PrerollEnd => _prerollValue;
 
         public event EventHandler<ElementsSkippedEventArgs<T>> ElementsSkipped;
+        public event EventHandler PlaylistStarted;
         public event EventHandler PlaylistStopped;
+
+
 
         public PlaylistController(PlaylistCollection<T> playlistToManage)
         {
@@ -39,52 +61,69 @@ namespace StarDust.PlaylistControler
             _playlistToManage.PlaylistCleared += OnPlaylistCleared;
             _playlistToManage.ElementsRemoved += OnElementsRemoved;
 
-            Parallel.ForEach(_playlistToManage, AddEvent);
+            Parallel.ForEach(_playlistToManage,
+                (item) =>
+                {
+                    AddEvent(item);
+                    SetPreroll(item);
+                });
 
             _initialized = true;
 
 
             var scheduleElements =
                 _playlistToManage.Where(x => x.StartMode == StartMode.Schedule && x.StartTime >= DateTime.Now);
-            Parallel.ForEach(scheduleElements, (element) => element.StartCheckingTask());
+            Parallel.ForEach(scheduleElements, (element) => element.StartScheduling());
 
         }
+
+        /// <summary>
+        /// Define preroll for an element
+        /// </summary>
+        /// <param name="item"></param>
+        private void SetPreroll(T item)
+        {
+            item.PrerollStart = PrerollStart;
+            item.PrerollEnd = PrerollEnd;
+        }
+
 
         private void OnElementsRemoved(object sender, CollectionChangeEventArgs e)
         {
             Parallel.ForEach((IEnumerable<T>)e.Element, (element) =>
              {
+
+                 element.CancelScheduling();
                  RemoveEvent(element);
-                 element.CancelCheckingTask();
              });
         }
 
 
         private void OnPlaylistCleared(object sender, EventArgs e)
         {
-            CurrentPlayingItem?.CancelCheckingTask();
-            PreparedItem?.CancelCheckingTask();
+            CurrentPlayingItem?.CancelScheduling();
+            PreparedItem?.CancelScheduling();
 
             Parallel.ForEach(_playlistToManage.ToArray(), (x) =>
              {
                  RemoveEvent(x);
-                 x.CancelCheckingTask();
+                 x.CancelScheduling();
              });
         }
 
         private void OnElementRemoved(object sender, CollectionChangeEventArgs e)
         {
             var element = (T)e.Element;
-            Task.Run(() => element.CancelCheckingTask())
+            Task.Run(() => element.CancelScheduling())
                 .ContinueWith((t) => RemoveEvent((T)e.Element));
         }
 
         private void OnElementAdded(object sender, CollectionChangeEventArgs e)
         {
             var element = (T)e.Element;
-
-            Task.Run(() => AddEvent(element))
-                .ContinueWith((t) => StartScheduleElement(element));
+            Task.Run(() => StartScheduleElement(element));
+            AddEvent(element);
+            SetPreroll(element);
         }
 
 
@@ -114,7 +153,7 @@ namespace StarDust.PlaylistControler
 
             if (e.OldStartMode == StartMode.Schedule && element.Status == Status.None)
             {
-                element.CancelCheckingTask();
+                element.CancelScheduling();
                 return;
             }
 
@@ -127,7 +166,7 @@ namespace StarDust.PlaylistControler
             var element = (T)sender;
 
             //Launch action
-            Task.Factory.StartNew(() => ActionOnStartTimeNear(element));
+            Task.Factory.StartNew(() => StartTimeNear?.Invoke(element, e));
 
             //Unsubscribe event
             element.StartTimeNear -= OnStartTimeNear;
@@ -140,10 +179,11 @@ namespace StarDust.PlaylistControler
             CurrentPlayingItem = element;
 
 
-            CheckingForSkip(playedItem, CurrentPlayingItem);
-
             //Launch action
-            Task.Run(() => ActionOnStartTimeReached(element));
+            Task.Run(() => StartTimeReached?.Invoke(sender, e));
+            Task.Run(() => CheckingForSkip(playedItem, CurrentPlayingItem));
+
+            CheckForPlaylistStart();
 
             //Unsubscribe event
             element.StartTimeReached -= OnStartTimeReached;
@@ -157,7 +197,7 @@ namespace StarDust.PlaylistControler
             PrepareNextElement(element);
 
             //Launch action
-            Task.Run(() => ActionOnEndTimeNear(CurrentPlayingItem));
+            Task.Run(() => EndTimeNear?.Invoke(sender, e));
 
             //Unsubscribe event
             element.EndTimeNear -= OnEndTimeNear;
@@ -169,7 +209,7 @@ namespace StarDust.PlaylistControler
         {
             var element = (T)sender;
 
-            Task.Factory.StartNew(() => ActionOnEndTimeReached(element))
+            Task.Factory.StartNew(() => EndTimeReached?.Invoke(sender, e))
                 .ContinueWith((t) => CheckForPlaylistStopped());
 
             //Unsubscribe event
@@ -180,6 +220,12 @@ namespace StarDust.PlaylistControler
         {
             if (PreparedItem == null)
                 PlaylistStopped?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected void CheckForPlaylistStart()
+        {
+            if (PreparedItem == null)
+                PlaylistStarted?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -197,7 +243,7 @@ namespace StarDust.PlaylistControler
 
             PreparedItem = nextElement;
             PreparedItem.StartTime = playingElement.EndTime;
-            PreparedItem?.StartCheckingTask();
+            PreparedItem?.StartScheduling();
         }
 
         /// <summary>
@@ -211,7 +257,7 @@ namespace StarDust.PlaylistControler
 
             if (element.StartMode == StartMode.Schedule && element.StartTime > DateTime.Now)
             {
-                element.StartCheckingTask();
+                element.StartScheduling();
             }
         }
 
@@ -225,14 +271,14 @@ namespace StarDust.PlaylistControler
                 return;
 
             var previousElement = _playlistToManage.ElementAtOrDefault(indexCurrentElement - 1);
-            if (previousElement == null || previousElement.Status == Status.Played)
+            if (previousElement == null || previousElement.Status == Status.Ended)
                 return;
 
             var skippedList = new List<T>();
             for (var i = indexCurrentElement - 1; i > 0; i--)
             {
                 var element = _playlistToManage.ElementAt(i);
-                if (element.Status == Status.Played)
+                if (element.Status == Status.Ended)
                     break;
                 element.Status = Status.Skipped;
                 skippedList.Add(element);
@@ -248,11 +294,9 @@ namespace StarDust.PlaylistControler
             if (CurrentPlayingItem.Equals(PreparedItem))
                 return;
 
-            playedItem?.CancelCheckingTask();
-            PreparedItem?.CancelCheckingTask();
+            playedItem?.CancelScheduling();
+            PreparedItem?.CancelScheduling();
 
-            if (playedItem == null)
-                return;
 
             Task.Factory.StartNew(() => VerifySkippedElement(IndexOf(newPlayingItem)));
         }

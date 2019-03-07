@@ -25,32 +25,38 @@ namespace TestConsole
             playlist.First().StartTime = DateTime.Now;
             playlist.First().StartMode = StartMode.Schedule;
 
-            playlist.RemoveWhere(x => x.ID > 8000);
+            playlist.RemoveAll(x => x.ID > 8000);
 
-            playlist.ElementAt(1000).StartMode = StartMode.Schedule;
-            playlist.ElementAt(1000).StartTime = DateTime.Now.AddSeconds(10);
+            playlist.ElementAt(500).StartMode = StartMode.Schedule;
+            playlist.ElementAt(500).StartTime = DateTime.Now.AddSeconds(10);
 
-
+            playlist.Insert(501, new TestPlaylistElement { ID = 9999, Duration = TimeSpan.FromSeconds(20) });
 
 
             PlaylistController = new PlaylistController<TestPlaylistElement>(playlist)
             {
-                ActionOnStartTimeReached = PrintStartTime,
-                ActionOnStartTimeNear = PrintStartTimeNear,
-                ActionOnEndTimeNear = PrintEndTimeNear,
-                ActionOnEndTimeReached = PrintEndTimeReached
+
             };
+            PlaylistController.StartTimeNear += (sender, eventArgs) => PrintStartTimeNear(sender);
+            PlaylistController.StartTimeReached += (sender, eventArgs) => PrintStartTime(sender);
+            PlaylistController.EndTimeNear += (sender, eventArgs) => PrintEndTimeNear(sender);
+            PlaylistController.EndTimeReached += (sender, eventArgs) => PrintEndTimeReached(sender);
 
             PlaylistController.Initialize();
             PlaylistController.PlaylistStopped += (sender, eventArgs) => Console.WriteLine("Playlist stopped");
+            PlaylistController.PlaylistStarted += (sender, eventArgs) => Console.WriteLine("Playlist started");
             PlaylistController.ElementsSkipped += (sender, eventArgs) =>
                 Console.WriteLine($"{eventArgs.SkippedElements.Length} elements was skipped");
 
-            playlist.ElementAt(5000).StartTime = DateTime.Now.AddSeconds(30);
-            playlist.ElementAt(5000).StartMode = StartMode.Schedule;
+            playlist.ElementAt(800).StartTime = DateTime.Now.AddSeconds(30);
+            playlist.ElementAt(800).StartMode = StartMode.Schedule;
 
 
-            playlist.ElementAt(5002).StartMode = StartMode.None;
+            playlist.ElementAt(802).StartMode = StartMode.None;
+
+
+            playlist.ElementAt(1000).StartTime = DateTime.Now.AddSeconds(70);
+            playlist.ElementAt(1000).StartMode = StartMode.Schedule;
 
 
             Console.WriteLine("Playlist ready to run");

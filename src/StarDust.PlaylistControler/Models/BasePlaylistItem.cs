@@ -7,35 +7,54 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
-public abstract class BasePlaylistItem : ISchedule
+
+public abstract class BasePlaylistItem : IPlaylistItem
 {
+
+
+
+
 
     private DateTime? _startTime;
     private TimeSpan _duration = TimeSpan.Zero;
     private StartMode _startMode = StartMode.AutoFollow;
 
-    private CancellationTokenSource tokenSource;
+    private CancellationTokenSource _tokenSource;
 
 
     public event PropertyChangedEventHandler PropertyChanged;
+
+    public event EventHandler ScheduleInfoChanged;
     public event EventHandler EndTimeNear;
     public event EventHandler EndTimeReached;
     public event EventHandler StartTimeNear;
     public event EventHandler StartTimeReached;
     public event EventHandler<StartModeChangedEventArgs> StartModeChanged;
 
-
+    [DisplayName("Status")]
     public Status Status { get; set; }
 
+    [TimespanRequired]
+    [TimespanGreaterThan(ValueInMilliseconds = 500)]
+    [DisplayName("Preroll from start")]
+    public TimeSpan PrerollStart { get; set; } = TimeSpan.FromSeconds(2);
 
-    public TimeSpan PrerollStart => TimeSpan.FromSeconds(2);
-    public TimeSpan PrerollEnd => PrerollStart.Add(TimeSpan.FromSeconds(0.2));
+
+    [TimespanRequired]
+    [TimespanGreaterThan(ValueInMilliseconds = 500)]
+    [DisplayName("Preroll from end")]
+    public TimeSpan PrerollEnd { get; set; } = TimeSpan.FromSeconds(2);
 
 
     public DateTime? StartTime
     {
         get => _startTime;
-        set => SetProperty(ref _startTime, value);
+        set => SetProperty(ref _startTime, value, (v) => { RaisedTimingInfoChanged(); });
+    }
+
+    private void RaisedTimingInfoChanged()
+    {
+        ScheduleInfoChanged?.Invoke(this, EventArgs.Empty);
     }
 
 
@@ -45,7 +64,7 @@ public abstract class BasePlaylistItem : ISchedule
     public TimeSpan Duration
     {
         get => _duration;
-        set => SetProperty(ref _duration, value);
+        set => SetProperty(ref _duration, value, (v) => { RaisedTimingInfoChanged(); });
     }
 
 
@@ -62,6 +81,7 @@ public abstract class BasePlaylistItem : ISchedule
             (oldValue) =>
             {
                 StartModeChanged?.Invoke(this, new StartModeChangedEventArgs(oldValue, _startMode));
+                RaisedTimingInfoChanged();
             });
     }
 
@@ -123,22 +143,22 @@ public abstract class BasePlaylistItem : ISchedule
 
     #endregion
 
-    public void CancelCheckingTask()
+    public void CancelScheduling()
     {
-        if (tokenSource == null)
+        if (_tokenSource == null)
             return;
 
-        tokenSource.Cancel();
+        _tokenSource.Cancel();
         Status = Status.Aborted;
     }
 
-    public void StartCheckingTask()
+    public void StartScheduling()
     {
         if (Status == Status.Skipped)
             return;
 
-        tokenSource?.Cancel();
-        tokenSource = new CancellationTokenSource();
+        _tokenSource?.Cancel();
+        _tokenSource = new CancellationTokenSource();
 
         if (!StartTime.HasValue ||
             Duration <= TimeSpan.Zero ||
@@ -149,12 +169,12 @@ public abstract class BasePlaylistItem : ISchedule
         Task.Factory.StartNew(async () =>
       {
 
-          await CheckNearFromStartTime(tokenSource.Token);
-          await CheckStartTimeReached(tokenSource.Token);
-          await CheckEndTimeNear(tokenSource.Token);
-          await CheckEndTimeReached(tokenSource.Token);
-          tokenSource = null;
-      }, tokenSource.Token);
+          await CheckNearFromStartTime(_tokenSource.Token);
+          await CheckStartTimeReached(_tokenSource.Token);
+          await CheckEndTimeNear(_tokenSource.Token);
+          await CheckEndTimeReached(_tokenSource.Token);
+          _tokenSource = null;
+      }, _tokenSource.Token);
 
 
     }
@@ -169,7 +189,7 @@ public abstract class BasePlaylistItem : ISchedule
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
-            Status = Status.Prepared;
+            Status = Status.WaitForStart;
             StartTimeNear?.Invoke(this, EventArgs.Empty);
         }, cancellationToken);
 
@@ -185,7 +205,7 @@ public abstract class BasePlaylistItem : ISchedule
                 Task.Delay(10, cancellationToken).Wait(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
-            Status = Status.Playing;
+            Status = Status.Started;
             StartTimeReached?.Invoke(this, EventArgs.Empty);
         }, cancellationToken);
     }
@@ -202,7 +222,7 @@ public abstract class BasePlaylistItem : ISchedule
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            Status = Status.Played;
+            Status = Status.Ended;
             EndTimeReached?.Invoke(this, EventArgs.Empty);
         }, cancellationToken);
     }
@@ -225,22 +245,4 @@ public abstract class BasePlaylistItem : ISchedule
     }
 
 
-
-
-
-
-
-}
-
-public class StartModeChangedEventArgs : EventArgs
-{
-
-    public StartMode OldStartMode { get; }
-    public StartMode CurrentStartMode { get; }
-
-    public StartModeChangedEventArgs(StartMode oldStartMode, StartMode currentStartMode)
-    {
-        OldStartMode = oldStartMode;
-        CurrentStartMode = currentStartMode;
-    }
 }
