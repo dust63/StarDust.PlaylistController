@@ -10,9 +10,7 @@ namespace StarDust.PlaylistControler
 
     public class PlaylistController<T> : IScheduleNotifications where T : class, IPlaylistItem
     {
-        private readonly PlaylistCollection<T> _playlistToManage;
         private bool _initialized = false;
-        private readonly TimeSpan _prerollValue = TimeSpan.FromSeconds(2);
 
         public T CurrentPlayingItem { get; protected set; }
         public T PreparedItem { get; protected set; }
@@ -25,40 +23,42 @@ namespace StarDust.PlaylistControler
 
 
 
-        public TimeSpan PrerollStart => _prerollValue;
-        public TimeSpan PrerollEnd => _prerollValue;
+        public TimeSpan PrerollStart { get; } = TimeSpan.FromSeconds(2);
+        public TimeSpan PrerollEnd { get; } = TimeSpan.FromSeconds(2);
 
         public event EventHandler<ElementsSkippedEventArgs<T>> ElementsSkipped;
         public event EventHandler PlaylistStarted;
         public event EventHandler PlaylistStopped;
 
-        public PlaylistCollection<T> PlaylistManaged => _playlistToManage;
+        public PlaylistCollection<T> PlaylistManaged { get; }
 
         public PlaylistController(PlaylistCollection<T> playlistToManage)
         {
-            _playlistToManage = playlistToManage;
+            PlaylistManaged = playlistToManage;
         }
 
         public PlaylistController(PlaylistCollection<T> playlistToManage, TimeSpan prerollValue) : this(playlistToManage)
         {
-            if (prerollValue > TimeSpan.Zero)
-                _prerollValue = prerollValue;
-            else
-                throw new ArgumentException("Preroll must be positive and not zero");
-
+            if (prerollValue <= TimeSpan.Zero)
+                throw new ArgumentException("Preroll must be positive and not zero", nameof(prerollValue));
+            PrerollStart = prerollValue;
+            PrerollEnd = prerollValue;
         }
 
+        /// <summary>
+        /// Prepare the playlist to be run
+        /// </summary>
         public void Initialize()
         {
             if (_initialized)
                 return;
 
-            _playlistToManage.ElementAdded += OnElementAdded;
-            _playlistToManage.ElementRemoved += OnElementRemoved;
-            _playlistToManage.PlaylistCleared += OnPlaylistCleared;
-            _playlistToManage.ElementsRemoved += OnElementsRemoved;
+            PlaylistManaged.ElementAdded += OnElementAdded;
+            PlaylistManaged.ElementRemoved += OnElementRemoved;
+            PlaylistManaged.PlaylistCleared += OnPlaylistCleared;
+            PlaylistManaged.ElementsRemoved += OnElementsRemoved;
 
-            Parallel.ForEach(_playlistToManage,
+            Parallel.ForEach(PlaylistManaged,
                 (item) =>
                 {
                     AddEvent(item);
@@ -69,7 +69,7 @@ namespace StarDust.PlaylistControler
 
 
             var scheduleElements =
-                _playlistToManage.Where(x => x.StartMode == StartMode.Schedule && x.StartTime >= DateTime.Now);
+                PlaylistManaged.Where(x => x.StartMode == StartMode.Schedule && x.StartTime >= DateTime.Now);
             Parallel.ForEach(scheduleElements, (element) => element.StartScheduling());
 
         }
@@ -101,7 +101,7 @@ namespace StarDust.PlaylistControler
             CurrentPlayingItem?.CancelScheduling();
             PreparedItem?.CancelScheduling();
 
-            Parallel.ForEach(_playlistToManage.ToArray(), (x) =>
+            Parallel.ForEach(PlaylistManaged.ToArray(), (x) =>
              {
                  RemoveEvent(x);
                  x.CancelScheduling();
@@ -158,6 +158,7 @@ namespace StarDust.PlaylistControler
             if (e.CurrentStartMode == StartMode.Schedule)
                 StartScheduleElement(element);
         }
+
         protected void OnStartTimeNear(object sender, EventArgs e)
         {
             var element = (T)sender;
@@ -168,6 +169,7 @@ namespace StarDust.PlaylistControler
             //Unsubscribe event
             element.StartTimeNear -= OnStartTimeNear;
         }
+
         protected void OnStartTimeReached(object sender, EventArgs e)
         {
 
@@ -189,7 +191,6 @@ namespace StarDust.PlaylistControler
         {
             var element = (T)sender;
 
-            var indexCurrentElement = this.IndexOf(element);
 
             PrepareNextElement(element);
 
@@ -231,7 +232,7 @@ namespace StarDust.PlaylistControler
         /// <param name="playingElement"></param>
         private void PrepareNextElement(T playingElement)
         {
-            var nextElement = _playlistToManage.ElementAtOrDefault(this.IndexOf(playingElement) + 1);
+            var nextElement = PlaylistManaged.ElementAtOrDefault(this.IndexOf(playingElement) + 1);
             if (nextElement == null || nextElement.StartMode != StartMode.AutoFollow)
             {
                 PreparedItem = null;
@@ -267,14 +268,14 @@ namespace StarDust.PlaylistControler
             if (ElementsSkipped == null)
                 return;
 
-            var previousElement = _playlistToManage.ElementAtOrDefault(indexCurrentElement - 1);
+            var previousElement = PlaylistManaged.ElementAtOrDefault(indexCurrentElement - 1);
             if (previousElement == null || previousElement.Status == Status.Ended)
                 return;
 
             var skippedList = new List<T>();
             for (var i = indexCurrentElement - 1; i > 0; i--)
             {
-                var element = _playlistToManage.ElementAt(i);
+                var element = PlaylistManaged.ElementAt(i);
                 if (element.Status == Status.Ended)
                     break;
                 element.Status = Status.Skipped;
@@ -300,7 +301,7 @@ namespace StarDust.PlaylistControler
 
         private int IndexOf(T element)
         {
-            return _playlistToManage.ToList().IndexOf(element);
+            return PlaylistManaged.ToList().IndexOf(element);
         }
 
     }
